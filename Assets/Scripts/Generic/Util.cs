@@ -11,7 +11,7 @@ public static class Util
 	}
 
 	public static string FormatDouble(double num) {
-		return num.ToString("0.00");
+		return num.ToString("#,##0.##");//string.Format("{0:n}", num);
 	}
 
 	public static string ToSI(double value, string unit = "") {

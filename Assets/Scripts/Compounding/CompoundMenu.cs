@@ -30,22 +30,27 @@ public class CompoundMenu : MonoBehaviour
 	[Header("Graph")]
 	public Transform savingsAxisLabelContainer;
 	public SavingsAxisLabel savingsAxisLabelPrefab;
-	public List<Text> yearsText;
+
+	public Transform yearAxisLabelContainer;
+	public YearAxisLabel yearAxisLabelPrefab;
+
 	public Transform savingsBarContainer;
 	public SavingsBar savingsBarPrefab;
+
+	public SavingsBarTooltip savingsBarTooltip;
 
 	[Header("Result Texts")]
 	public Text totalDepositsAmountText;
 	public Text totalInterestAmountText;
 	public Text totalSavingsAmountText;
 
+	// results
 	private double initialDeposit;
 	private double regularDeposit;
 	private int numberOfYears;
 	private FrequencyEnum depositFrequency;
 	private FrequencyEnum compoundFrequency;
 	private double interestRate;
-
 	private List<SavingsData> savingDatas;
 	private double totalDeposits;
 	private double totalInterests;
@@ -53,8 +58,11 @@ public class CompoundMenu : MonoBehaviour
 
 	void Start() {
 		savingDatas = new List<SavingsData>();
+
 		savingsBarPrefab.gameObject.SetActive(false);
 		savingsAxisLabelPrefab.gameObject.SetActive(false);
+		yearAxisLabelPrefab.gameObject.SetActive(false);
+
 		dynamicPoolSO.ResetState();
 
 		OnInterestRateEndEdit(DEFAULT_INTEREST_RATE.ToString());
@@ -64,22 +72,21 @@ public class CompoundMenu : MonoBehaviour
 	#region Input
 	public void OnInitialDepositEndEdit(string value) {
 		initialDeposit = Util.ConvertStringToDouble(value);
-		Debug.Log(Util.FormatDouble(initialDeposit));
-		initialDepositInput.text = Util.FormatDouble(initialDeposit);
+		//initialDepositInput.text = Util.FormatDouble(initialDeposit);
 		CalculateResult();
 		DisplayResult();
 	}
 
 	public void OnRegularDepositEndEdit(string value) {
 		regularDeposit = Util.ConvertStringToDouble(value);
-		regularDepositInput.text = Util.FormatDouble(regularDeposit);
+		//regularDepositInput.text = Util.FormatDouble(regularDeposit);
 		CalculateResult();
 		DisplayResult();
 	}
 
 	public void OnNumberOfYearsEndEdit(string value) {
 		numberOfYears = Util.ConvertStringToInt(value);
-		numberOfYears = Math.Min(numberOfYears, 50); // limit to 50 years
+		//numberOfYears = Math.Min(numberOfYears, 50); // limit to 50 years
 		numberOfYearsInput.text = Util.FormatInteger(numberOfYears);
 		CalculateResult();
 		DisplayResult();
@@ -140,7 +147,7 @@ public class CompoundMenu : MonoBehaviour
 			totalDeposits += regularDeposit;
 			totalInterests += (totalSavings + regularDeposit) * interestRate * 0.01f;
 			totalSavings = totalDeposits + totalInterests;
-			SavingsData savingData = new SavingsData(totalDeposits, totalInterests);
+			SavingsData savingData = new SavingsData(i, totalDeposits, totalInterests);
 			savingDatas.Add(savingData);
 		}
 	}
@@ -155,9 +162,8 @@ public class CompoundMenu : MonoBehaviour
 			savingsBar.Init(savingData, totalSavings);
 		}
 
-
-		// setup y axis
 		SetupSavingsAxisLabels();
+		SetupYearAxisLabels();
 
 		totalDepositsAmountText.text = string.Format("${0}", Util.FormatDouble(totalDeposits));
 		totalInterestAmountText.text = string.Format("${0}", Util.FormatDouble(totalInterests));
@@ -185,6 +191,46 @@ public class CompoundMenu : MonoBehaviour
 		for (int i=0; i<labelCount; i++) {
 			SavingsAxisLabel savingsAxisLabel = dynamicPoolSO.GetPoolObject<SavingsAxisLabel>(savingsAxisLabelPrefab, savingsAxisLabelContainer);
 			savingsAxisLabel.Init(i * interval, totalSavings);
+		}
+	}
+
+	private void SetupYearAxisLabels() {
+		int totalYearsDisplay;
+		int interval;
+
+		if (numberOfYears > 5) {
+			totalYearsDisplay = 5;
+			interval = numberOfYears / 5;
+		} else {
+			totalYearsDisplay = numberOfYears;
+			interval = 1;
+		}
+
+		dynamicPoolSO.ReturnAllPoolObjects(yearAxisLabelPrefab.PoolObjectId);
+
+		// get the savings bar width
+		for (int i = 1; i <= totalYearsDisplay; i++) {
+			YearAxisLabel yearAxisLabel = dynamicPoolSO.GetPoolObject<YearAxisLabel>(yearAxisLabelPrefab, yearAxisLabelContainer);
+			yearAxisLabel.Init(i * interval, numberOfYears);
+		}
+	}
+	#endregion
+
+	#region Savings Bar Tooltip
+	public void OnPointerEnterSavingsBar(int index) {
+		savingsBarTooltip.SetText(savingDatas[index]);
+		savingsBarTooltip.ShowTooltip();
+	}
+
+	public void OnPointerExitSavingsBar(int index) {
+		StartCoroutine(DoHideTooltip(index));
+	}
+
+	IEnumerator DoHideTooltip(int index) {
+		yield return new WaitForEndOfFrame();
+
+		if (savingsBarTooltip.savingsData.year == index) {
+			savingsBarTooltip.HideTooltip();
 		}
 	}
 	#endregion
