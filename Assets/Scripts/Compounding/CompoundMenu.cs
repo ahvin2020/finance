@@ -28,7 +28,8 @@ public class CompoundMenu : MonoBehaviour
 	public InputField interestRateInput;
 
 	[Header("Graph")]
-	public Text[] savingsText;
+	public Transform savingsAxisLabelContainer;
+	public SavingsAxisLabel savingsAxisLabelPrefab;
 	public List<Text> yearsText;
 	public Transform savingsBarContainer;
 	public SavingsBar savingsBarPrefab;
@@ -53,6 +54,7 @@ public class CompoundMenu : MonoBehaviour
 	void Start() {
 		savingDatas = new List<SavingsData>();
 		savingsBarPrefab.gameObject.SetActive(false);
+		savingsAxisLabelPrefab.gameObject.SetActive(false);
 		dynamicPoolSO.ResetState();
 
 		OnInterestRateEndEdit(DEFAULT_INTEREST_RATE.ToString());
@@ -62,14 +64,15 @@ public class CompoundMenu : MonoBehaviour
 	#region Input
 	public void OnInitialDepositEndEdit(string value) {
 		initialDeposit = Util.ConvertStringToDouble(value);
-		initialDepositInput.text = string.Format("${0}", Util.FormatDouble(initialDeposit));
+		Debug.Log(Util.FormatDouble(initialDeposit));
+		initialDepositInput.text = Util.FormatDouble(initialDeposit);
 		CalculateResult();
 		DisplayResult();
 	}
 
 	public void OnRegularDepositEndEdit(string value) {
 		regularDeposit = Util.ConvertStringToDouble(value);
-		regularDepositInput.text = string.Format("${0}", Util.FormatDouble(regularDeposit));
+		regularDepositInput.text = Util.FormatDouble(regularDeposit);
 		CalculateResult();
 		DisplayResult();
 	}
@@ -77,7 +80,7 @@ public class CompoundMenu : MonoBehaviour
 	public void OnNumberOfYearsEndEdit(string value) {
 		numberOfYears = Util.ConvertStringToInt(value);
 		numberOfYears = Math.Min(numberOfYears, 50); // limit to 50 years
-		numberOfYearsInput.text = string.Format("${0}", Util.FormatInteger(numberOfYears));
+		numberOfYearsInput.text = Util.FormatInteger(numberOfYears);
 		CalculateResult();
 		DisplayResult();
 	}
@@ -97,7 +100,7 @@ public class CompoundMenu : MonoBehaviour
 	public void OnInterestRateEndEdit(string value) {
 		interestRate = Util.ConvertStringToDouble(value);
 		interestRate = Math.Min(interestRate, 20); // limit to 20%
-		interestRateInput.text = string.Format("{0}%", Util.FormatDouble(interestRate));
+		interestRateInput.text = Util.FormatDouble(interestRate);
 		CalculateResult();
 		DisplayResult();
 	}
@@ -145,23 +148,44 @@ public class CompoundMenu : MonoBehaviour
 
 	#region Result
 	private void DisplayResult() {
-		dynamicPoolSO.ReturnAllPoolObjects(savingsBarPrefab.PoolObjectId);
-
 		// update bar
+		dynamicPoolSO.ReturnAllPoolObjects(savingsBarPrefab.PoolObjectId);
 		foreach (SavingsData savingData in savingDatas) {
 			SavingsBar savingsBar = dynamicPoolSO.GetPoolObject<SavingsBar>(savingsBarPrefab, savingsBarContainer);
 			savingsBar.Init(savingData, totalSavings);
 		}
 
-		// update savings labels
-		savingsText[0].text = "0";
-		savingsText[1].text = Util.ToSI(totalSavings * 0.3);
-		savingsText[2].text = Util.ToSI(totalSavings * 0.6);
-		savingsText[3].text = Util.ToSI(totalSavings * 0.9);
+
+		// setup y axis
+		SetupSavingsAxisLabels();
 
 		totalDepositsAmountText.text = string.Format("${0}", Util.FormatDouble(totalDeposits));
 		totalInterestAmountText.text = string.Format("${0}", Util.FormatDouble(totalInterests));
 		totalSavingsAmountText.text = string.Format("${0}", Util.FormatDouble(totalSavings));
+	}
+
+	private void SetupSavingsAxisLabels() {
+		// round to nearest 5
+		long roundedValue = (long)Util.Round(totalSavings, 5);
+		int labelCount = 1;
+		double interval = 0;
+
+		// can be splitted to how many non zero labels?
+		if (roundedValue > 0) {
+			if (roundedValue % 3 == 0) {
+				labelCount += 3;
+				interval = roundedValue / 3;
+			} else {
+				labelCount += 2;
+				interval = roundedValue / 2;
+			}
+		}
+
+		dynamicPoolSO.ReturnAllPoolObjects(savingsAxisLabelPrefab.PoolObjectId);
+		for (int i=0; i<labelCount; i++) {
+			SavingsAxisLabel savingsAxisLabel = dynamicPoolSO.GetPoolObject<SavingsAxisLabel>(savingsAxisLabelPrefab, savingsAxisLabelContainer);
+			savingsAxisLabel.Init(i * interval, totalSavings);
+		}
 	}
 	#endregion
 }

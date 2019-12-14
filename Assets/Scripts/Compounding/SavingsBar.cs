@@ -12,7 +12,7 @@ public class SavingsBar : PoolObject
 	public void Init(SavingsData savingsData, double totalSavings) {
 		GetComponent<RectTransform>().localScale = Vector3.one;
 
-		float maxHeight = GetComponentInParent<RectTransform>().sizeDelta.y;
+		float maxHeight = transform.parent.GetComponent<RectTransform>().rect.size.y;
 		depositBar.sizeDelta = new Vector2(depositBar.sizeDelta.x, (float)(savingsData.deposit / totalSavings * maxHeight));
 		interestBar.sizeDelta = new Vector2(interestBar.sizeDelta.x, (float)(savingsData.interest / totalSavings * maxHeight));
 	}
