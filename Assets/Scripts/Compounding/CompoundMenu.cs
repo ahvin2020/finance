@@ -142,11 +142,58 @@ public class CompoundMenu : MonoBehaviour
 		totalInterests = 0;
 		totalSavings = initialDeposit;
 
+		HashSet<int> depositMonths = new HashSet<int>();
+		switch (depositFrequency) {
+			case FrequencyEnum.Monthly:
+				depositMonths = new HashSet<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+				break;
+			case FrequencyEnum.Quarterly:
+				depositMonths = new HashSet<int> {3, 6, 9, 12};
+				break;
+			case FrequencyEnum.Annually:
+				depositMonths = new HashSet<int> {1};
+				break;
+		}
+
+		int compoundInterval = 1;
+		HashSet<int> compoundMonths = new HashSet<int>();
+		switch (compoundFrequency) {
+			case FrequencyEnum.Monthly:
+				compoundInterval = 12;
+				compoundMonths = new HashSet<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+				break;
+			case FrequencyEnum.Quarterly:
+				compoundInterval = 3;
+				compoundMonths = new HashSet<int> { 3, 6, 9, 12 };
+				break;
+			case FrequencyEnum.Annually:
+				compoundInterval = 1;
+				compoundMonths = new HashSet<int> { 1 };
+				break;
+		}
+
+		double interestRatePerPeriod = interestRate / (12 / compoundInterval);
+
+		//Debug.Log(compoundInterval + " " + interestRatePerPeriod);
+
 		// calculate savings for every year
 		for (int i = 0; i<numberOfYears; i++) {
-			totalDeposits += regularDeposit;
-			totalInterests += (totalSavings + regularDeposit) * interestRate * 0.01f;
-			totalSavings = totalDeposits + totalInterests;
+			// every month
+			for (int j=1; j<=12; j++) {
+				// deposit
+				if (depositMonths.Contains(j)) {
+					totalDeposits += regularDeposit;
+					totalSavings += regularDeposit;
+				}
+
+				// compound
+				if (compoundMonths.Contains(j)) {
+					double interest = totalSavings * interestRatePerPeriod * 0.01f;
+					totalInterests += interest;
+					totalSavings += interest;
+				}
+			}
+			
 			SavingsData savingData = new SavingsData(i, totalDeposits, totalInterests);
 			savingDatas.Add(savingData);
 		}
@@ -160,6 +207,7 @@ public class CompoundMenu : MonoBehaviour
 		foreach (SavingsData savingData in savingDatas) {
 			SavingsBar savingsBar = dynamicPoolSO.GetPoolObject<SavingsBar>(savingsBarPrefab, savingsBarContainer);
 			savingsBar.Init(savingData, totalSavings);
+			savingsBar.transform.SetAsLastSibling();
 		}
 
 		SetupSavingsAxisLabels();
@@ -172,7 +220,8 @@ public class CompoundMenu : MonoBehaviour
 
 	private void SetupSavingsAxisLabels() {
 		// round to nearest 5
-		long roundedValue = (long)Util.Round(totalSavings, 5);
+		int digitCount = Math.Round(totalSavings).ToString().Length;
+		long roundedValue = (long)Util.Round(totalSavings, (int)Math.Pow(10, digitCount - 1));
 		int labelCount = 1;
 		double interval = 0;
 
@@ -190,7 +239,7 @@ public class CompoundMenu : MonoBehaviour
 		dynamicPoolSO.ReturnAllPoolObjects(savingsAxisLabelPrefab.PoolObjectId);
 		for (int i=0; i<labelCount; i++) {
 			SavingsAxisLabel savingsAxisLabel = dynamicPoolSO.GetPoolObject<SavingsAxisLabel>(savingsAxisLabelPrefab, savingsAxisLabelContainer);
-			savingsAxisLabel.Init(i * interval, totalSavings);
+			savingsAxisLabel.Init(i * interval, roundedValue);
 		}
 	}
 
